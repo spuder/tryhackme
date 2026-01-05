@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>HopSec Asylum – Facility Video Portal</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="icon" href="/favicon.ico" />
+
+    <script src="/hls.min.js"></script>
+    <style>
+        :root {
+            --bg: #0b0f14;
+            --fg: #d6dde5;
+            --muted: #7d8a97;
+            --accent: #3aa675;
+            --danger: #ff4d4f;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            background: var(--bg);
+            color: var(--fg);
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        }
+
+        .app {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        header h1 {
+            font-size: 18px;
+            margin: 0;
+            letter-spacing: .04em;
+            color: #c7ffd5;
+        }
+
+        .pill {
+            font-size: 12px;
+            padding: 2px 8px;
+            border: 1px solid #204437;
+            color: #8fe3b5;
+            border-radius: 999px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 16px;
+        }
+
+        .panel {
+            border: 1px solid #1e2a36;
+            border-radius: 8px;
+            background: #0e141a;
+        }
+
+        .panel header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border-bottom: 1px solid #1e2a36;
+        }
+
+        .panel header h2 {
+            font-size: 13px;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: #aab8c6;
+        }
+
+        .panel .body {
+            padding: 12px;
+        }
+
+        /* login */
+        .login {
+            max-width: 360px;
+            margin: 40px auto;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        input[type=text],
+        input[type=password] {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #223447;
+            background: #0c1117;
+            color: var(--fg);
+        }
+
+        .btn {
+            padding: 10px 14px;
+            border: 1px solid #284a3c;
+            background: #12251c;
+            color: #b4f1c8;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+
+        .msg {
+            color: #ffbcbc;
+            min-height: 1.2em;
+        }
+
+        /* camera list (HUD layout) */
+        .cams {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .cam {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            border: 1px solid #1e2a36;
+            border-radius: 6px;
+            background: #0b1016;
+        }
+
+        .cam:hover {
+            background: #0f1620;
+        }
+
+        .cam .badge {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 999px;
+            border: 1px solid #293341;
+            color: #9fb0c3;
+        }
+
+        /* player: 16:9 letterboxed, no cropping */
+        .player-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #000;
+            border: 1px solid #1e2a36;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        video {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+
+        /* HUD overlay */
+        .hud {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .hud-top {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        #hudCam {
+            background: rgba(0, 0, 0, .65);
+            color: #fff;
+            padding: 4px 8px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            border-radius: 4px;
+        }
+
+        #hudTime {
+            background: rgba(0, 0, 0, .65);
+            color: #b9ffc2;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .hud-bottom {
+            position: absolute;
+            left: 10px;
+            bottom: 10px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        #hudStatus {
+            background: rgba(230, 0, 0, .78);
+            color: #fff;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            letter-spacing: .06em;
+        }
+
+        #hudSignal {
+            background: rgba(0, 0, 0, .65);
+            color: #ffcdcd;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        /* blocked overlay */
+        .blocked {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background: linear-gradient(0deg, rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65));
+            color: #ffd6d6;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            padding: 20px;
+        }
+
+        .blocked .box {
+            border: 2px solid #5a2a2a;
+            border-radius: 8px;
+            padding: 16px 20px;
+            background: rgba(30, 12, 12, .6);
+        }
+
+        .blocked .title {
+            font-size: 20px;
+            margin-bottom: 6px;
+            color: #ff8080;
+        }
+
+        .blocked .sub {
+            font-size: 12px;
+            color: #ffbcbc;
+            letter-spacing: 0;
+            text-transform: none;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <header>
+            <h1>HopSec Asylum – Facility Video Portal</h1>
+            <span id="rolePill" class="pill">Guard Console</span>
+        </header>
+
+        <div class="panel login" id="loginPanel">
+            <header>
+                <h2>Sign in</h2>
+            </header>
+            <div class="body">
+                <div class="form-row"><input id="u" type="text" placeholder="Email"></div>
+                <div class="form-row"><input id="p" type="password" placeholder="Password"></div>
+                <div class="form-row"><button class="btn" id="loginBtn">Login</button></div>
+                <div class="msg" id="msg"></div>
+            </div>
+        </div>
+
+        <div class="grid" id="mainGrid" style="display:none;">
+            <div class="panel">
+                <header>
+                    <h2>Cameras</h2>
+                </header>
+                <div class="body">
+                    <div id="camList" class="cams"></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <header>
+                    <h2>Viewer</h2>
+                </header>
+                <div class="body">
+                    <div class="player-wrap">
+                        <video id="v" playsinline muted></video>
+                        <div class="hud">
+                            <div class="hud-top">
+                                <div id="hudCam">—</div>
+                                <div id="hudTime">--/--/---- --:--:--</div>
+                            </div>
+                            <div class="hud-bottom">
+                                <div id="hudStatus">LIVE</div>
+                                <div id="hudSignal">SIGNAL LOST — Reconnecting…</div>
+                            </div>
+                        </div>
+                        <div id="blocked" class="blocked">
+                            <div class="box">
+                                <div class="title">Access Restricted</div>
+                                <div class="sub">You do not have permission to view this feed.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+
+</html>

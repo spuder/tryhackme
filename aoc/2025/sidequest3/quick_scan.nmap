@@ -1,0 +1,1 @@
+# Nmap 7.98 scan initiated Mon Dec 22 13:06:55 2025 as: nmap -T4 --top-ports 1000 -sV -oA quick_scan -iL targets.txt
